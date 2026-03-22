@@ -227,6 +227,21 @@ export default function MeetFlow() {
   const [newName, setNewName] = useState("");
   const [open, setOpen] = useState(false);
   const [viewId, setViewId] = useState("xiao-liang");
+  const [meetingTitle, setMeetingTitle] = useState("");
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
+  const [isBooked, setIsBooked] = useState(false);
+
+  const handleBookMeeting = () => {
+    if (!meetingTitle || !selectedSlot) return;
+    setIsBooked(true);
+    // 這裡可以加入 API 呼叫邏輯
+  };
+
+  const resetMeeting = () => {
+    setIsBooked(false);
+    setMeetingTitle("");
+    setSelectedSlot(null);
+  };
 
   const me = members.find((m) => m.id === "me")!;
   const others = members.filter((m) => m.id !== "me");
@@ -300,6 +315,10 @@ export default function MeetFlow() {
             <TabsTrigger value="common" className="gap-1.5 text-sm">
               <CalendarCheck className="w-3.5 h-3.5" />
               共同空閒
+            </TabsTrigger>
+            <TabsTrigger value="meeting" className="gap-1.5 text-sm">
+              <CalendarCheck className="w-3.5 h-3.5" />
+              發起會議
             </TabsTrigger>
           </TabsList>
 
@@ -491,6 +510,126 @@ export default function MeetFlow() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </TabsContent>
+          {/* ── Tab 5: Create Meeting ── */}
+          <TabsContent value="meeting">
+            <div className="mb-5">
+              <h2 className="text-base font-semibold">發起正式會議</h2>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                選擇一個共同空閒時段並填寫細節
+              </p>
+            </div>
+
+            {isBooked ? (
+              <Card className="border-emerald-200 bg-emerald-50/50">
+                <CardContent className="pt-10 pb-10 flex flex-col items-center text-center">
+                  <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                    <CalendarCheck className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-xl font-bold text-emerald-900">會議預約成功！</h3>
+                  <p className="text-emerald-700 mt-2">
+                    主題：<strong>{meetingTitle}</strong>
+                  </p>
+                  <p className="text-emerald-600 text-sm mt-1">
+                    時間：{selectedSlot && (
+                      `${DAYS[parseInt(selectedSlot.split('-')[0])]} ${selectedSlot.split('-')[1]}:00 - ${parseInt(selectedSlot.split('-')[1]) + 1}:00`
+                    )}
+                  </p>
+                  <Button className="mt-6" variant="outline" onClick={resetMeeting}>
+                    建立另一個會議
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* 左側：會議資訊輸入 */}
+                <div className="md:col-span-1 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">會議名稱</label>
+                    <Input 
+                      placeholder="例如：週會、專案同步" 
+                      value={meetingTitle}
+                      onChange={(e) => setMeetingTitle(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">已選時段</label>
+                    <div className="p-3 rounded-md bg-muted text-sm border min-h-[40px]">
+                      {selectedSlot ? (
+                        <span className="flex items-center gap-2 font-medium text-primary">
+                          <Calendar className="w-4 h-4" />
+                          {DAYS[parseInt(selectedSlot.split('-')[0])]} {selectedSlot.split('-')[1]}:00
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground italic">請在右側選擇</span>
+                      )}
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full" 
+                    disabled={!meetingTitle || !selectedSlot}
+                    onClick={handleBookMeeting}
+                  >
+                    送出會議邀請
+                  </Button>
+                </div>
+
+                {/* 右側：時段選擇 */}
+                <div className="md:col-span-2">
+                  <Card>
+                    <CardHeader className="py-4">
+                      <CardTitle className="text-sm">點擊下方綠色時段進行預約</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {commonSlots.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-muted-foreground">
+                          尚無共同空閒時段，請調整成員時間。
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm border-separate border-spacing-1">
+                            <thead>
+                              <tr>
+                                <th className="w-12"></th>
+                                {DAYS.map(d => <th key={d} className="font-normal pb-2">{d}</th>)}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {HOURS.map(h => (
+                                <tr key={h}>
+                                  <td className="text-xs text-muted-foreground text-right pr-2">{h}:00</td>
+                                  {DAYS.map((_, d) => {
+                                    const s = slot(d, h);
+                                    const isCommon = commonSlots.includes(s);
+                                    const isSelected = selectedSlot === s;
+                                    
+                                    return (
+                                      <td key={d} className="p-0">
+                                        <button
+                                          disabled={!isCommon}
+                                          onClick={() => setSelectedSlot(s)}
+                                          className={`w-full h-10 rounded-md border transition-all ${
+                                            isCommon 
+                                              ? isSelected 
+                                                ? "bg-primary border-primary ring-2 ring-primary ring-offset-1" 
+                                                : "bg-emerald-100 border-emerald-200 hover:bg-emerald-200"
+                                              : "bg-muted/30 border-transparent cursor-not-allowed opacity-30"
+                                          }`}
+                                        />
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
           </TabsContent>
